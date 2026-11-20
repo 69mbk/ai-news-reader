@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+feedparser
+requests
+python-dotenv
+reportlab
+pillow

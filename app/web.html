@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#8b1a1a">
+<title>AI Daily News</title>
+<style>
+:root{--bg:#f4f1ec;--card:#fff;--ink:#1a1a1a;--mute:#666;--acc:#8b1a1a;--box:#ebe5dc}
+@media(prefers-color-scheme:dark){:root{--bg:#121212;--card:#1e1e1e;--ink:#eee;--mute:#aaa;--acc:#e06666;--box:#2a2a2a}}
+*{box-sizing:border-box}
+body{font-family:Georgia,"Times New Roman",serif;margin:0;background:var(--bg);color:var(--ink);max-width:760px;margin:auto}
+header{background:#8b1a1a;color:#fff;padding:16px;text-align:center}
+header h1{margin:0;font-size:26px;letter-spacing:2px}
+#info{font-family:system-ui,sans-serif;font-size:12px;opacity:.85;margin-top:4px}
+.bar{display:flex;gap:8px;padding:10px 12px;font-family:system-ui,sans-serif}
+button{flex:1;padding:11px;border:0;border-radius:8px;background:#8b1a1a;color:#fff;font-size:14px}
+button.alt{background:#555}
+nav{display:flex;gap:6px;overflow-x:auto;padding:0 12px 8px;font-family:system-ui,sans-serif;position:sticky;top:0;background:var(--bg);z-index:5}
+nav a{white-space:nowrap;padding:6px 12px;border-radius:16px;color:#fff;font-size:12px;text-decoration:none}
+.box{background:var(--box);margin:10px 12px;padding:12px 14px;border-radius:10px}
+.box h4{margin:0 0 6px;color:var(--acc);font-family:system-ui,sans-serif;font-size:12px;letter-spacing:1px}
+.box ol{margin:0;padding-left:20px}.box li{margin:4px 0;font-size:14px}
+.card{background:var(--card);margin:10px 12px;border-radius:10px;overflow:hidden}
+.card .body{padding:12px 14px}
+.pic{width:100%;display:block;max-height:240px;object-fit:cover}
+.meta{font-family:system-ui,sans-serif;font-size:11px;color:var(--mute)}
+.card h3{margin:4px 0;font-size:17px;line-height:1.25}
+.card h2{margin:4px 0;font-size:23px;line-height:1.2}
+.card p{margin:6px 0;font-size:15px;line-height:1.5}
+.card a,.brief a{color:var(--acc);font-family:system-ui,sans-serif;font-size:13px}
+.sec h2.t{margin:18px 12px 0;padding:8px 12px;border-radius:6px;color:#fff;font-size:15px;letter-spacing:1px;font-family:system-ui,sans-serif}
+.brief{margin:8px 14px;font-size:14px;line-height:1.4}
+.brief b a{color:var(--ink);font-size:14px;font-family:inherit}
+.sub{margin:12px 14px 0;font-family:system-ui,sans-serif;font-size:11px;color:var(--mute);letter-spacing:1px}
+#msg{padding:14px;text-align:center;color:var(--mute);font-family:system-ui,sans-serif}
+</style></head><body>
+<header><h1>AI DAILY NEWS</h1><div id="info"></div></header>
+<div class="bar"><button id="pdf">Ouvrir le PDF</button><button class="alt" id="reload">Actualiser</button><button class="alt" id="tok">Token</button></div>
+<nav id="nav"></nav>
+<div id="msg"></div><div id="list"></div>
+<script>
+const $=id=>document.getElementById(id);
+const COL={"Maroc":"#b3202a","Sciences & Espace":"#1d4e89","IA & Technologie":"#6a2c91","Cybersécurité & Réseaux":"#0b6e4f","Monde & Économie":"#8a5a00","Sport":"#c25400","Tendances Reddit":"#d9480f"};
+let token=localStorage.getItem('token')||'';
+function el(t,c,x){const e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e}
+function ask(){const t=prompt('Colle ton token :',token);if(t!==null){token=t.trim();localStorage.setItem('token',token);load();}}
+function lnk(a,txt){const l=el('a','',txt);if(/^https?:\/\//.test(a.url))l.href=a.url;l.target='_blank';l.rel='noopener';return l}
+function pic(a){if(!a.image)return null;const i=el('img','pic');i.loading='lazy';i.alt='';i.src='/api/img/'+a.image+'?token='+encodeURIComponent(token);i.onerror=()=>i.remove();return i}
+function card(a,big){
+ const c=el('article','card');const p=pic(a);if(p)c.append(p);
+ const b=el('div','body');
+ b.append(el('div','meta',(big?'À LA UNE · '+a.category.toUpperCase()+' · ':'')+a.source+' · '+a.published.slice(0,10)));
+ b.append(el(big?'h2':'h3','',a.title));b.append(el('p','',a.summary));b.append(lnk(a,"Lire l'article original"));
+ c.append(b);return c}
+async function load(){
+ $('msg').textContent='Chargement...';$('list').innerHTML='';$('nav').innerHTML='';
+ if(!token){$('msg').textContent='Appuie sur "Token" pour commencer.';return;}
+ try{
+  const r=await fetch('/api/news/latest',{headers:{'x-api-token':token}});
+  if(r.status==401){$('msg').textContent='Token invalide.';return;}
+  if(!r.ok){$('msg').textContent='Erreur serveur ('+r.status+')';return;}
+  const d=await r.json();const L=$('list');
+  $('info').textContent='Édition du '+d.generated.replace('T',' à ')+' · '+d.count+' articles'+(d.pages?' · '+d.pages+' pages':'');
+  $('msg').textContent='';
+  if(d.top5&&d.top5.length){const b=el('div','box');b.append(el('h4','',"L'ESSENTIEL EN 5 POINTS"));
+   const o=el('ol');d.top5.forEach(t=>o.append(el('li','',t)));b.append(o);L.append(b);}
+  const lead=d.articles.find(a=>a.tier==='lead');if(lead)L.append(card(lead,true));
+  Object.keys(COL).forEach((cat,i)=>{
+   const rows=d.articles.filter(a=>a.category===cat&&a!==lead);if(!rows.length)return;
+   const s=el('section','sec');s.id='s'+i;
+   const h=el('h2','t',cat.toUpperCase());h.style.background=COL[cat];s.append(h);
+   rows.filter(a=>a.tier==='story').forEach(a=>s.append(card(a,false)));
+   const br=rows.filter(a=>a.tier==='brief');
+   if(br.length){s.append(el('div','sub','EN BREF'));
+    br.forEach(a=>{const p=el('div','brief');const b=el('b');b.append(lnk(a,a.title));p.append(b);
+     p.append(document.createTextNode(' — '+a.summary+' ('+a.source+')'));s.append(p);});}
+   L.append(s);
+   const n=el('a','',cat);n.href='#s'+i;n.style.background=COL[cat];$('nav').append(n);
+  });
+  if(d.fact){const b=el('div','box');b.append(el('h4','','LE SAVIEZ-VOUS ?'));
+   b.append(el('p','',d.fact.text));b.append(lnk(d.fact,'Source : '+d.fact.source));L.append(b);}
+ }catch(e){$('msg').textContent='Connexion impossible.';}
+}
+$('pdf').onclick=()=>{if(token)location.href='/api/edition/pdf?token='+encodeURIComponent(token);else ask();};
+$('reload').onclick=load;$('tok').onclick=ask;
+load();
+</script></body></html>
